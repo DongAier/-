@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>刹车大师 | REDLINE 极限制动</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Teko:wght@500;700&family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@500;700;800&display=swap');
+
+    :root {
+      --accent-orange: #ff5e36;
+      --accent-red: #ff2a4b;
+      --accent-gold: #ffd700;
+      --bg-dark: #090c12;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background-color: var(--bg-dark);
+      color: #fff;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    .font-num {
+      font-family: 'Teko', sans-serif;
+      letter-spacing: 0.05em;
+    }
+
+    .font-mono-val {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    @keyframes violentShake {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      15% { transform: translate(-12px, 9px) rotate(-2.5deg); }
+      30% { transform: translate(14px, -11px) rotate(3deg); }
+      45% { transform: translate(-10px, -8px) rotate(-2deg); }
+      60% { transform: translate(8px, 7px) rotate(1.5deg); }
+      80% { transform: translate(-5px, 3px) rotate(-0.5deg); }
+    }
+
+    .violent-shake {
+      animation: violentShake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    }
+
+    @keyframes sparkFly {
+      0% { opacity: 1; transform: translate(0, 0) scale(1); }
+      100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0); }
+    }
+
+    .spark {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: #ffdd44;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #ff3300;
+      animation: sparkFly 0.45s ease-out forwards;
+      pointer-events-none;
+    }
+
+    /* Golden Zone Pulsing Glow (Expanded 3x width) */
+    @keyframes goldenPulse {
+      0%, 100% {
+        box-shadow: 0 0 8px #ffd700, 0 0 16px rgba(255, 215, 0, 0.45);
+        filter: brightness(1);
+      }
+      50% {
+        box-shadow: 0 0 16px #fff, 0 0 28px rgba(255, 215, 0, 0.85);
+        filter: brightness(1.25);
+      }
+    }
+
+    .golden-slit {
+      animation: goldenPulse 1.2s infinite ease-in-out;
+    }
+
+    @keyframes victoryFlash {
+      0% { background-color: rgba(255, 215, 0, 0.35); }
+      100% { background-color: transparent; }
+    }
+    .victory-flash {
+      animation: victoryFlash 0.5s ease-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-0 sm:p-4 bg-black select-none">
+
+  <!-- Mobile Frame Container -->
+  <div id="appContainer" class="relative w-full max-w-md min-h-screen sm:min-h-[890px] bg-[#0c1017] sm:rounded-3xl shadow-2xl flex flex-col justify-between overflow-hidden border border-neutral-800">
+
+    <!-- Background Road Visual -->
+    <div class="absolute inset-0 pointer-events-none opacity-20">
+      <div class="absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-[#182338] to-transparent"></div>
+      <svg class="w-full h-72 opacity-35" viewBox="0 0 400 300" preserveAspectRatio="none">
+        <line x1="200" y1="50" x2="20" y2="300" stroke="#ff5e36" stroke-width="1.5" stroke-dasharray="10 8"/>
+        <line x1="200" y1="50" x2="380" y2="300" stroke="#ff5e36" stroke-width="1.5" stroke-dasharray="10 8"/>
+        <line x1="200" y1="50" x2="200" y2="300" stroke="#ffffff" stroke-width="2" stroke-dasharray="16 14"/>
+      </svg>
+    </div>
+
+    <!-- Top Navigation Header -->
+    <header class="relative z-10 px-5 pt-4 pb-2 flex items-center justify-between border-b border-white/5">
+      <div class="flex items-center gap-2">
+        <span class="text-[#ff5e36] text-xl font-black italic tracking-tighter">///</span>
+        <div>
+          <h1 class="text-sm font-black tracking-widest text-white italic">REDLINE</h1>
+          <p class="text-[9px] text-neutral-400 tracking-wider">极限制动 · 临界破损测试仪</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="soundBtn" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition" title="开关音效">
+          <svg id="soundIcon" class="w-4 h-4 text-neutral-300" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77zM16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM3 9v6h4l5 5V4L7 9H3z"/>
+          </svg>
+        </button>
+        <button id="infoBtn" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition text-xs font-bold text-neutral-300" title="规则">
+          ?
+        </button>
+        <button id="difficultyToggleBtn" class="px-2.5 py-1 rounded-md bg-[#251817] border border-[#ff5e36]/40 text-[#ff8f75] text-[10px] font-bold tracking-wider hover:bg-[#341d1a] transition">
+          游标速度: <span id="speedModeLabel">正常</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Status Callout -->
+    <div class="relative z-10 px-5 pt-2 text-center">
+      <div id="statusBadge" class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 text-xs font-bold tracking-wide">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+        <span id="statusText">绿灯 · 游标来回漂移中</span>
+      </div>
+      <p class="text-[11px] text-neutral-400 mt-1 font-medium">
+        在游标划入 <span class="text-amber-300 font-bold bg-amber-950/50 px-1.5 py-0.5 rounded border border-amber-500/30">1450 ~ 1599 N 黄金槽</span> 时精准踩下！<span class="text-red-400 font-bold">&gt;1600 N 必断</span>
+      </p>
+    </div>
+
+    <!-- Speedometer Gauge HUD -->
+    <div class="relative z-10 flex flex-col items-center justify-center my-0.5">
+      <div class="relative w-64 h-52 flex items-center justify-center">
+        <svg class="w-64 h-64 -rotate-90 transform" viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="78" fill="transparent" stroke="#182030" stroke-width="8" stroke-dasharray="368" stroke-dashoffset="122" stroke-linecap="round"/>
+          <circle id="speedArc" cx="100" cy="100" r="78" fill="transparent" stroke="url(#speedGrad)" stroke-width="8" stroke-dasharray="368" stroke-dashoffset="122" stroke-linecap="round" class="transition-all duration-75 ease-out"/>
+          <defs>
+            <linearGradient id="speedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#00ff88"/>
+              <stop offset="50%" stop-color="#ffb300"/>
+              <stop offset="100%" stop-color="#ff2a4b"/>
+            </linearGradient>
+          </defs>
+        </svg>
+
+        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-2">
+          <span id="speedValue" class="text-7xl font-num font-bold tracking-tight text-white leading-none">100</span>
+          <span class="text-[11px] font-bold tracking-widest text-neutral-400 uppercase -mt-1">KM / H</span>
+          <div id="brakeActionTag" class="mt-1 px-2.5 py-0.5 rounded text-[10px] tracking-widest uppercase font-bold text-neutral-500 bg-neutral-900/80 border border-neutral-800">
+            READY TO BRAKE
+          </div>
+        </div>
+
+        <div class="absolute inset-x-8 bottom-3 flex justify-between text-[11px] text-neutral-500 font-mono-val pointer-events-none">
+          <span>0</span>
+          <span class="text-neutral-400">100</span>
+          <span>200</span>
+        </div>
+      </div>
+    </div>
+    <!-- Live Telemetry Grid -->
+    <div class="relative z-10 px-5 py-2 grid grid-cols-3 gap-2 border-y border-white/5 bg-[#080b10]/80">
+      <div class="text-center">
+        <span class="text-[10px] text-neutral-400 block mb-0.5">目标偏差点</span>
+        <div class="flex items-baseline justify-center gap-0.5">
+          <span id="targetDeltaVal" class="text-xl font-bold font-mono-val text-neutral-300">--</span>
+          <span class="text-[10px] text-neutral-500">N</span>
+        </div>
+      </div>
+      <div class="text-center border-x border-white/5">
+        <span class="text-[10px] text-neutral-400 block mb-0.5">制动总用时</span>
+        <div class="flex items-baseline justify-center gap-0.5">
+          <span id="brakeTimeVal" class="text-xl font-bold font-mono-val text-white">0.00</span>
+          <span class="text-[10px] text-neutral-500">s</span>
+        </div>
+      </div>
+      <div class="text-center">
+        <span class="text-[10px] text-neutral-400 block mb-0.5">制动距离</span>
+        <div class="flex items-baseline justify-center gap-0.5">
+          <span id="brakeDistVal" class="text-xl font-bold font-mono-val text-white">0.0</span>
+          <span class="text-[10px] text-neutral-500">m</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Force Readout & Brake Pedal Action Area -->
+    <div class="relative z-10 px-5 pt-3 pb-1">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-1.5">
+          <span class="w-1.5 h-3.5 bg-[#ff5e36] rounded-sm"></span>
+          <span class="text-xs font-extrabold tracking-wider text-neutral-200">当前踏板负荷 / APPLIED FORCE</span>
+        </div>
+        <div class="flex items-baseline gap-1">
+          <span id="forceValueDisplay" class="text-3xl font-black font-num text-[#ff5e36]">0</span>
+          <span class="text-xs text-neutral-400 font-bold">N</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-12 gap-3 items-center bg-[#101520] p-3 rounded-2xl border border-white/5">
+        
+        <!-- Left Vertical Pillar (0 - 2000 N) -->
+        <div class="col-span-3 flex flex-col items-center">
+          <div class="relative w-10 h-32 bg-[#080b11] rounded-lg border border-neutral-700/60 overflow-hidden flex flex-col justify-end">
+            <!-- Red zone for > 1600N (Top 20% = 1600 to 2000N) -->
+            <div class="absolute inset-x-0 top-0 h-[20%] bg-red-600/35 border-b-2 border-red-500 pointer-events-none flex items-center justify-center">
+              <span class="text-[8px] text-red-400 font-extrabold rotate-90 tracking-widest whitespace-nowrap">&gt;1600N必断</span>
+            </div>
+
+            <!-- Expanded Golden Zone (1450N - 1599N, bottom: 72.5%, height: 7.5%) -->
+            <div class="absolute inset-x-0 bottom-[72.5%] h-[7.5%] bg-amber-300/80 golden-slit pointer-events-none z-10" title="黄金区间 (1450-1599N)"></div>
+
+            <!-- Insufficient zone (< 1450N, Bottom 72.5%) -->
+            <div class="absolute inset-x-0 bottom-0 h-[72.5%] bg-neutral-900/40 pointer-events-none"></div>
+
+            <!-- Dynamic Fill Bar -->
+            <div id="verticalFillBar" class="w-full bg-gradient-to-t from-amber-500 via-amber-300 to-red-500 transition-all duration-75" style="height: 0%;"></div>
+
+            <!-- 1600 N Fracture threshold line -->
+            <div class="absolute bottom-[80%] w-full h-[2px] bg-red-400 shadow-[0_0_4px_#ff2244]"></div>
+          </div>
+          <span class="text-[9px] text-neutral-400 mt-1 font-mono-val">0-2000N</span>
+        </div>
+
+        <!-- Center: Mechanical Pedal Graphics & Fracture Animation -->
+        <div class="col-span-4 flex flex-col items-center justify-center relative">
+          <div id="pedalContainer" class="relative w-24 h-28 flex items-center justify-center transition-transform">
+            <div id="sparksBox" class="absolute inset-0 pointer-events-none overflow-visible"></div>
+
+            <svg id="pedalSvg" class="w-full h-full filter drop-shadow-md overflow-visible" viewBox="0 0 100 130">
+              <rect x="36" y="5" width="28" height="12" rx="4" fill="#2d333f" stroke="#4c5466" stroke-width="2"/>
+              <circle cx="50" cy="11" r="3.5" fill="#ff5e36"/>
+
+              <path id="pedalUpperArm" d="M 50 17 L 50 58" stroke="#687285" stroke-width="12" stroke-linecap="round"/>
+
+              <g id="pedalCrackGroup" opacity="0">
+                <path d="M 40 58 L 52 62 L 46 66 L 60 62 L 50 54" stroke="#ff2244" stroke-width="3.5" fill="none"/>
+                <path d="M 42 62 L 58 58" stroke="#ffcc00" stroke-width="2"/>
+              </g>
+
+              <g id="pedalLowerGroup">
+                <path id="pedalLowerArm" d="M 50 58 L 50 95" stroke="#4d5463" stroke-width="12" stroke-linecap="round"/>
+                <g id="pedalFootPlate">
+                  <rect x="18" y="93" width="64" height="28" rx="6" fill="#181a20" stroke="#3d4454" stroke-width="2.5"/>
+                  <line x1="24" y1="101" x2="76" y2="101" stroke="#303644" stroke-width="2.5"/>
+                  <line x1="24" y1="107" x2="76" y2="107" stroke="#303644" stroke-width="2.5"/>
+                  <line x1="24" y1="113" x2="76" y2="113" stroke="#303644" stroke-width="2.5"/>
+                </g>
+              </g>
+            </svg>
+          </div>
+          <span id="pedalConditionText" class="text-[10px] font-bold text-neutral-400 mt-1">踏板待命中</span>
+        </div>
+
+        <!-- Right: Primary Action Button -->
+        <div class="col-span-5 flex flex-col items-center">
+          <button id="triggerBrakeBtn" class="w-full h-28 rounded-2xl bg-gradient-to-br from-[#ff6b43] via-[#e24419] to-[#b82604] active:scale-95 shadow-xl shadow-orange-950/60 border border-orange-400/50 flex flex-col items-center justify-center p-2 text-white transition-all cursor-pointer">
+            <div class="w-12 h-1.5 bg-white/40 rounded-full mb-2"></div>
+            <span class="text-xl font-black tracking-wider uppercase">立即踩下！</span>
+            <span class="text-[10px] font-semibold text-orange-200 mt-0.5 tracking-tight">瞬时锁定并开始刹车</span>
+            <span class="text-[9px] text-white/70 font-mono mt-1">[按 空格 亦可]</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+    <!-- Bottom Swaying QTE Track: 0 N to 2000 N -->
+    <div class="relative z-10 px-5 pt-1 pb-5">
+      <div class="flex items-center justify-between text-xs mb-1.5 px-1">
+        <div class="flex items-center gap-1.5">
+          <span class="text-neutral-300 font-bold">力度摆动槽 (0 ~ 2000 N)</span>
+          <span class="text-[10px] text-neutral-500 font-mono">左右自动漂移</span>
+        </div>
+        <span id="zoneIndicator" class="text-[11px] font-mono-val font-bold text-amber-400">高速游荡中...</span>
+      </div>
+
+      <!-- Moving Track Container -->
+      <div class="relative w-full h-16 bg-[#111622] rounded-2xl border border-neutral-700/80 p-1.5 overflow-hidden flex flex-col justify-between">
+        
+        <!-- Track Visual Segments (Total = 2000 N) -->
+        <div class="relative w-full h-7 rounded-lg overflow-hidden flex items-center bg-[#0a0d14] border border-neutral-800">
+          
+          <!-- 1. Left Weak Zone: 0 ~ 1100 N (0% - 55%) -> 严重刹不住 -->
+          <div class="h-full bg-gradient-to-r from-neutral-800 via-neutral-900 to-amber-950/40 border-r border-neutral-700/50 flex items-center justify-center text-[9px] font-bold text-neutral-400" style="width: 55%;">
+            刹不住 (&lt;1100N)
+          </div>
+
+          <!-- 2. Mid Transition: 1100 ~ 1450 N (55% - 72.5%, width 17.5%) -> 减速过缓/偏软 -->
+          <div class="h-full bg-amber-900/40 border-r border-amber-600/30 flex items-center justify-center text-[8px] font-semibold text-amber-300/80" style="width: 17.5%;">
+            偏软过长
+          </div>
+
+          <!-- 3. EXPANDED Golden Zone: 1450 ~ 1599 N (72.5% - 80%, width exactly 7.5% -> 3x previous width) -->
+          <div class="h-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 golden-slit flex items-center justify-center relative z-10 text-neutral-950 font-black text-[9px] tracking-tight border-x border-amber-200" style="width: 7.5%;" title="黄金区间 (1450-1599N)">
+            <span class="hidden sm:inline">★</span> 黄金 <span class="hidden sm:inline">★</span>
+            <div class="absolute -top-1 w-2 h-2 bg-white rotate-45 shadow-[0_0_8px_#fff]"></div>
+          </div>
+
+          <!-- 4. Danger Red Zone: 1600 ~ 2000 N (80% - 100%, width 20%) -> 超过1600全部踩断！ -->
+          <div class="h-full bg-gradient-to-r from-red-950 via-red-900 to-red-600 flex items-center justify-center text-[9px] font-black text-red-300 tracking-wider" style="width: 20%;">
+            &gt;1600N 全部踩断！
+          </div>
+
+          <!-- Swaying Cursor (Ping-Pong back and forth) -->
+          <div id="qteCursor" class="absolute top-0 bottom-0 w-2.5 bg-white rounded shadow-[0_0_12px_#ffffff] -ml-1.25 z-20 pointer-events-none transform -translate-x-1/2 flex flex-col items-center justify-between" style="left: 0%;">
+            <div class="w-3 h-1.5 bg-red-500 rounded-b"></div>
+            <div class="w-1 h-3 bg-neutral-900 rounded-sm"></div>
+            <div class="w-3 h-1.5 bg-red-500 rounded-t"></div>
+          </div>
+        </div>
+
+        <!-- Scale numbers under bar -->
+        <div class="flex justify-between px-1 text-[9px] font-mono-val text-neutral-400">
+          <span>0 N</span>
+          <span class="text-neutral-500">800 N</span>
+          <span class="text-amber-500">1100 N</span>
+          <span class="text-amber-300 font-black text-[10px]">★ 1450~1599 N (加宽3倍)</span>
+          <span class="text-red-400 font-black">1600 N (断裂线)</span>
+          <span class="text-red-500 font-bold">2000 N</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Result Outcome Modal -->
+    <div id="resultModal" class="absolute inset-0 bg-black/85 backdrop-blur-md z-30 flex items-center justify-center p-6 hidden">
+      <div class="w-full max-w-sm bg-[#151a24] border border-neutral-700 rounded-3xl p-6 shadow-2xl text-center transform transition-all">
+        <div id="modalIconContainer" class="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-3 bg-amber-500/20 text-amber-300 border border-amber-500/30">
+          🏆
+        </div>
+        
+        <h3 id="modalTitle" class="text-xl font-black text-white tracking-wide mb-1">极限制动达成！</h3>
+        <p id="modalDesc" class="text-xs text-neutral-300 leading-relaxed mb-4">
+          判定描述信息
+        </p>
+
+        <!-- Telemetry snapshot -->
+        <div class="grid grid-cols-3 gap-2 bg-[#0c1017] p-3 rounded-xl border border-white/5 mb-5 text-center font-mono-val">
+          <div>
+            <span class="text-[9px] text-neutral-400 block">锁定力度</span>
+            <span id="modalForce" class="text-sm font-bold text-orange-400">1525 N</span>
+          </div>
+          <div>
+            <span class="text-[9px] text-neutral-400 block">制动耗时</span>
+            <span id="modalTime" class="text-sm font-bold text-white">0.36 s</span>
+          </div>
+          <div>
+            <span class="text-[9px] text-neutral-400 block">刹车距离</span>
+            <span id="modalDist" class="text-sm font-bold text-white">8.5 m</span>
+          </div>
+        </div>
+
+        <button id="modalResetBtn" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#ff5e36] to-[#e63c12] hover:opacity-95 text-white font-black text-sm tracking-widest transition shadow-lg shadow-orange-950/60 uppercase cursor-pointer">
+          再次挑战
+        </button>
+      </div>
+    </div>
+
+    <!-- Rules / Mechanics Modal -->
+    <div id="infoModal" class="absolute inset-0 bg-black/85 backdrop-blur-md z-30 flex items-center justify-center p-6 hidden">
+      <div class="w-full max-w-sm bg-[#151a24] border border-neutral-700 rounded-3xl p-6 shadow-2xl text-left">
+        <h3 class="text-lg font-black text-white mb-3 flex items-center gap-2">
+          <span class="text-[#ff5e36]">///</span> 规则说明 · 刹车力学区间
+        </h3>
+        <ul class="text-xs text-neutral-300 space-y-3 leading-relaxed">
+          <li class="flex items-start gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-red-500 mt-1 shrink-0"></span>
+            <span><strong>踏板断裂区 (&gt; 1600 N 全断)：</strong>超过 1600 N 机械刚性极限，<strong>1600 N 以上全部直接踩断</strong>！踏板折断、金属火花飞溅，制动彻底失效，车辆失控！</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-300 mt-1 shrink-0 shadow-[0_0_8px_#ffd700]"></span>
+            <span><strong>黄金最佳区间 (1450 N ~ 1599 N)：</strong>已加宽 3 倍（宽度 150 N）！踩在此区间踏板完好无损，且刹车片输出最大有效咬合力，达成最短距离停稳！</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-neutral-400 mt-1 shrink-0"></span>
+            <span><strong>踏板完好但刹不住 (&lt; 1450 N)：</strong>踏板<strong>绝不会断</strong>，但因制动力度不足，减速缓慢，刹车距离过长（&lt;1100 N 完全刹不住）。</span>
+          </li>
+        </ul>
+        <button id="closeInfoBtn" class="w-full mt-6 py-2.5 rounded-xl bg-neutral-800 text-white font-bold text-xs hover:bg-neutral-700 transition cursor-pointer">
+          明白，开始测验
+        </button>
+      </div>
+    </div>
+
+  </div>
+  <script>
+    class AudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      playPedalSnap() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+
+        const bufferSize = this.ctx.sampleRate * 0.22;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.05));
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.setValueAtTime(1400, now);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.95, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        noise.start(now);
+
+        const osc = this.ctx.createOscillator();
+        const oscGain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.exponentialRampToValueAtTime(30, now + 0.35);
+        oscGain.gain.setValueAtTime(0.9, now);
+        oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc.connect(oscGain);
+        oscGain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.35);
+      }
+      playTireScreech(isPerfect = false) {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const duration = isPerfect ? 0.38 : 0.85;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(isPerfect ? 3300 : 2000, now);
+        osc.frequency.exponentialRampToValueAtTime(700, now + duration);
+        gain.gain.setValueAtTime(isPerfect ? 0.25 : 0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + duration);
+      }
+    }
+
+    const audio = new AudioEngine();
+    const qteCursor = document.getElementById('qteCursor');
+    const speedValEl = document.getElementById('speedValue');
+    const speedArcEl = document.getElementById('speedArc');
+    const brakeActionTag = document.getElementById('brakeActionTag');
+    const forceDisplayEl = document.getElementById('forceValueDisplay');
+    const verticalFillBar = document.getElementById('verticalFillBar');
+    const triggerBtn = document.getElementById('triggerBrakeBtn');
+    const statusBadge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
+    const targetDeltaVal = document.getElementById('targetDeltaVal');
+    const brakeTimeVal = document.getElementById('brakeTimeVal');
+    const brakeDistVal = document.getElementById('brakeDistVal');
+    const zoneIndicator = document.getElementById('zoneIndicator');
+    const appContainer = document.getElementById('appContainer');
+
+    const pedalContainer = document.getElementById('pedalContainer');
+    const pedalCrackGroup = document.getElementById('pedalCrackGroup');
+    const pedalLowerGroup = document.getElementById('pedalLowerGroup');
+    const pedalConditionText = document.getElementById('pedalConditionText');
+    const sparksBox = document.getElementById('sparksBox');
+
+    const resultModal = document.getElementById('resultModal');
+    const modalIconContainer = document.getElementById('modalIconContainer');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalDesc = document.getElementById('modalDesc');
+    const modalForce = document.getElementById('modalForce');
+    const modalTime = document.getElementById('modalTime');
+    const modalDist = document.getElementById('modalDist');
+    const modalResetBtn = document.getElementById('modalResetBtn');
+    const infoModal = document.getElementById('infoModal');
+    const infoBtn = document.getElementById('infoBtn');
+    const closeInfoBtn = document.getElementById('closeInfoBtn');
+    const soundBtn = document.getElementById('soundBtn');
+    const difficultyToggleBtn = document.getElementById('difficultyToggleBtn');
+    const speedModeLabel = document.getElementById('speedModeLabel');
+
+    // Thresholds: Golden zone expanded by 3x (1450 N to 1599 N, span ~150 N)
+    const MAX_FORCE = 2000;
+    const BREAK_THRESHOLD = 1600; // ALL > 1600 N SNAP
+    const GOLDEN_MIN = 1450;      // 1450 N ~ 1599 N (3x wider than original ~50N slot)
+    const GOLDEN_MAX = 1599;
+    const WEAK_STOP_THRESHOLD = 1100;
+
+    let cursorProgress = 0;
+    let cursorDirection = 1;
+    let cursorSpeed = 1.0;
+    let pingPongRunning = true;
+    let lastTimestamp = 0;
+    let lockedForce = 0;
+    let isBraking = false;
+    let initialSpeed = 100;
+    let currentSpeed = 100;
+    let simulationFrame = null;
+    let brakeStartTime = 0;
+    let currentDistance = 0;
+
+    const SPEEDS = [
+      { label: '正常', mult: 1.0 },
+      { label: '疾速', mult: 1.5 },
+      { label: '地狱', mult: 2.1 }
+    ];
+    let speedModeIndex = 0;
+
+    difficultyToggleBtn.addEventListener('click', () => {
+      speedModeIndex = (speedModeIndex + 1) % SPEEDS.length;
+      cursorSpeed = SPEEDS[speedModeIndex].mult;
+      speedModeLabel.textContent = SPEEDS[speedModeIndex].label;
+    });
+    function pingPongLoop(timestamp) {
+      if (!lastTimestamp) lastTimestamp = timestamp;
+      const dt = (timestamp - lastTimestamp) / 1000;
+      lastTimestamp = timestamp;
+
+      if (pingPongRunning) {
+        cursorProgress += cursorDirection * cursorSpeed * dt;
+
+        if (cursorProgress >= 1.0) {
+          cursorProgress = 1.0;
+          cursorDirection = -1;
+        } else if (cursorProgress <= 0.0) {
+          cursorProgress = 0.0;
+          cursorDirection = 1;
+        }
+
+        const pct = cursorProgress * 100;
+        qteCursor.style.left = `${pct}%`;
+
+        const hoverForce = Math.round(cursorProgress * MAX_FORCE);
+        forceDisplayEl.textContent = hoverForce;
+        verticalFillBar.style.height = `${pct}%`;
+
+        if (hoverForce > BREAK_THRESHOLD) {
+          zoneIndicator.textContent = '危险：>1600N 踩下必断！';
+          zoneIndicator.className = 'text-[11px] font-mono-val font-bold text-red-500 animate-pulse';
+        } else if (hoverForce >= GOLDEN_MIN && hoverForce <= GOLDEN_MAX) {
+          zoneIndicator.textContent = '★ 命中！1450~1599N 黄金制动区！';
+          zoneIndicator.className = 'text-[11px] font-mono-val font-bold text-amber-300 animate-bounce';
+        } else if (hoverForce >= WEAK_STOP_THRESHOLD) {
+          zoneIndicator.textContent = '偏软：减速偏慢，滑行距离过长';
+          zoneIndicator.className = 'text-[11px] font-mono-val font-bold text-amber-500';
+        } else {
+          zoneIndicator.textContent = '不足：完全刹不住 (<1100N)';
+          zoneIndicator.className = 'text-[11px] font-mono-val font-bold text-neutral-400';
+        }
+
+        const previewAngle = (cursorProgress * 14).toFixed(1);
+        pedalContainer.style.transform = `rotate(-${previewAngle}deg)`;
+      }
+
+      requestAnimationFrame(pingPongLoop);
+    }
+    requestAnimationFrame(pingPongLoop);
+
+    function setGaugeSpeed(val) {
+      speedValEl.textContent = Math.round(val);
+      const fraction = Math.min(Math.max(val / 200, 0), 1);
+      const offset = 368 - (fraction * 246);
+      speedArcEl.style.strokeDashoffset = offset;
+    }
+
+    function spawnSparks() {
+      sparksBox.innerHTML = '';
+      for (let i = 0; i < 28; i++) {
+        const spark = document.createElement('div');
+        spark.className = 'spark';
+        spark.style.left = '50px';
+        spark.style.top = '60px';
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 35 + Math.random() * 65;
+        spark.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+        spark.style.setProperty('--dy', `${Math.sin(angle) * dist}px`);
+        sparksBox.appendChild(spark);
+      }
+    }
+    function lockAndBrake() {
+      if (isBraking || !pingPongRunning) return;
+      audio.init();
+
+      pingPongRunning = false;
+      isBraking = true;
+      triggerBtn.disabled = true;
+      triggerBtn.classList.add('opacity-50', 'pointer-events-none');
+
+      lockedForce = Math.round(cursorProgress * MAX_FORCE);
+      forceDisplayEl.textContent = lockedForce;
+      verticalFillBar.style.height = `${(lockedForce / MAX_FORCE) * 100}%`;
+
+      const goldenCenter = Math.round((GOLDEN_MIN + GOLDEN_MAX) / 2);
+      const deltaN = lockedForce - goldenCenter;
+      targetDeltaVal.textContent = (deltaN >= 0 ? `+${deltaN}` : `${deltaN}`);
+
+      brakeActionTag.textContent = 'FORCE LOCKED';
+      brakeActionTag.className = 'mt-1 px-2.5 py-0.5 rounded text-[10px] tracking-widest uppercase font-bold text-orange-400 bg-orange-950/40 border border-orange-500/50';
+
+      brakeStartTime = performance.now();
+      currentDistance = 0;
+      currentSpeed = initialSpeed;
+
+      // 1. > 1600 N: ALL SNAP
+      if (lockedForce > BREAK_THRESHOLD) {
+        handlePedalOverloadBreak(lockedForce);
+      }
+      // 2. 1450 N ~ 1599 N (3x expanded width): GOLDEN ZONE
+      else if (lockedForce >= GOLDEN_MIN && lockedForce <= GOLDEN_MAX) {
+        handleGoldenBrake(lockedForce);
+      }
+      // 3. < 1450 N: Pedal intact, but unable to stop in time / insufficient
+      else {
+        handleWeakBrake(lockedForce);
+      }
+    }
+
+    function handlePedalOverloadBreak(force) {
+      audio.playPedalSnap();
+
+      appContainer.classList.add('violent-shake');
+      setTimeout(() => appContainer.classList.remove('violent-shake'), 600);
+
+      spawnSparks();
+      pedalCrackGroup.setAttribute('opacity', '1');
+      pedalLowerGroup.style.transformOrigin = '50px 58px';
+      pedalLowerGroup.style.transform = 'translate(15px, 14px) rotate(35deg)';
+      pedalConditionText.textContent = `踏板过载断裂！(${force} N)`;
+      pedalConditionText.className = 'text-[10px] font-black text-red-500 mt-1';
+
+      statusBadge.className = 'inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-red-950/80 border border-red-500/60 text-red-400 text-xs font-bold tracking-wide';
+      statusText.textContent = '警报：>1600N 踏板被踩断！';
+
+      let simElapsed = 0;
+      function runawayLoop() {
+        simElapsed += 0.016;
+        brakeTimeVal.textContent = simElapsed.toFixed(2);
+        
+        currentSpeed = Math.min(130, currentSpeed + 0.15);
+        setGaugeSpeed(currentSpeed);
+        currentDistance += (currentSpeed / 3.6) * 0.016;
+        brakeDistVal.textContent = currentDistance.toFixed(1);
+
+        if (simElapsed < 1.25) {
+          simulationFrame = requestAnimationFrame(runawayLoop);
+        } else {
+          showResultModal({
+            status: 'break',
+            force: force,
+            time: simElapsed.toFixed(2),
+            dist: currentDistance.toFixed(1)
+          });
+        }
+      }
+      simulationFrame = requestAnimationFrame(runawayLoop);
+    }
+
+    function handleGoldenBrake(force) {
+      audio.playTireScreech(true);
+      appContainer.classList.add('victory-flash');
+      setTimeout(() => appContainer.classList.remove('victory-flash'), 500);
+
+      pedalConditionText.textContent = '极限咬合 · 踏板完好！';
+      pedalConditionText.className = 'text-[10px] font-black text-amber-300 mt-1';
+      pedalContainer.style.transform = 'rotate(-18deg)';
+
+      statusBadge.className = 'inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-950/80 border border-amber-400/80 text-amber-300 text-xs font-bold tracking-wide';
+      statusText.textContent = '★ 黄金极限制动达成！';
+
+      const deceleration = 21.0; 
+
+      function goldenLoop() {
+        const delta = 0.016;
+        const elapsed = (performance.now() - brakeStartTime) / 1000;
+        brakeTimeVal.textContent = elapsed.toFixed(2);
+
+        const drop = (deceleration * delta) * 3.6;
+        currentSpeed = Math.max(0, currentSpeed - drop);
+        setGaugeSpeed(currentSpeed);
+
+        currentDistance += (currentSpeed / 3.6) * delta;
+        brakeDistVal.textContent = currentDistance.toFixed(1);
+
+        if (currentSpeed > 0 && elapsed < 1.8) {
+          simulationFrame = requestAnimationFrame(goldenLoop);
+        } else {
+          showResultModal({
+            status: 'golden',
+            force: force,
+            time: elapsed.toFixed(2),
+            dist: currentDistance.toFixed(1)
+          });
+        }
+      }
+      simulationFrame = requestAnimationFrame(goldenLoop);
+    }
+
+    function handleWeakBrake(force) {
+      audio.playTireScreech(false);
+
+      pedalConditionText.textContent = '踏板完好 (制动力不足)';
+      pedalConditionText.className = 'text-[10px] font-bold text-neutral-300 mt-1';
+      const pushedAngle = (force / 1600 * 16).toFixed(1);
+      pedalContainer.style.transform = `rotate(-${pushedAngle}deg)`;
+
+      statusBadge.className = 'inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-950/80 border border-amber-500/60 text-amber-400 text-xs font-bold tracking-wide';
+      statusText.textContent = force < WEAK_STOP_THRESHOLD ? '刹不住 · 减速过微！' : '制动力偏软 · 距离超标！';
+
+      const decelerationRatio = (force / 1450);
+      const deceleration = Math.max(1.0, decelerationRatio * 7.5);
+
+      function weakLoop() {
+        const delta = 0.016;
+        const elapsed = (performance.now() - brakeStartTime) / 1000;
+        brakeTimeVal.textContent = elapsed.toFixed(2);
+
+        const drop = (deceleration * delta) * 3.6;
+        currentSpeed = Math.max(0, currentSpeed - drop);
+        setGaugeSpeed(currentSpeed);
+
+        currentDistance += (currentSpeed / 3.6) * delta;
+        brakeDistVal.textContent = currentDistance.toFixed(1);
+
+        if (currentSpeed > 0 && currentDistance < 35) {
+          simulationFrame = requestAnimationFrame(weakLoop);
+        } else {
+          showResultModal({
+            status: force < WEAK_STOP_THRESHOLD ? 'severe_weak' : 'weak',
+            force: force,
+            time: elapsed.toFixed(2),
+            dist: currentDistance.toFixed(1)
+          });
+        }
+      }
+      simulationFrame = requestAnimationFrame(weakLoop);
+    }
+    function showResultModal({ status, force, time, dist }) {
+      isBraking = false;
+      modalForce.textContent = `${force} N`;
+      modalTime.textContent = `${time} s`;
+      modalDist.textContent = `${dist} m`;
+
+      if (status === 'break') {
+        modalIconContainer.className = 'w-16 h-16 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-3 bg-red-600/20 text-red-500 border border-red-500/40';
+        modalIconContainer.textContent = '💥';
+        modalTitle.textContent = '踏板过载断裂！刹车全失！';
+        modalDesc.textContent = `锁定力道达到 ${force} N！超过了 1600 N 机械承重极限，踏板当场折断！制动完全失效，车辆失控冲出！`;
+      } else if (status === 'golden') {
+        modalIconContainer.className = 'w-16 h-16 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-3 bg-amber-500/20 text-amber-300 border border-amber-400/50 shadow-[0_0_15px_rgba(255,215,0,0.3)]';
+        modalIconContainer.textContent = '🏆';
+        modalTitle.textContent = '极限黄金制动达成！';
+        modalDesc.textContent = `成功！精准定格在黄金区间 (${force} N)！踩在 1600 N 断裂红线前夕，踏板完好且刹车力拉满，创下最短距离记录！`;
+      } else if (status === 'severe_weak') {
+        modalIconContainer.className = 'w-16 h-16 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-3 bg-neutral-700/30 text-neutral-400 border border-neutral-600/40';
+        modalIconContainer.textContent = '❌';
+        modalTitle.textContent = '完全刹不住！严重超标！';
+        modalDesc.textContent = `踏板虽未断裂，但锁定力度仅 ${force} N（低于 1100 N），减速度几乎无效，车辆已滑出 ${dist} 米仍未停稳！`;
+      } else {
+        modalIconContainer.className = 'w-16 h-16 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-3 bg-amber-500/20 text-amber-400 border border-amber-500/40';
+        modalIconContainer.textContent = '⚠️';
+        modalTitle.textContent = '刹车偏软，距离过长！';
+        modalDesc.textContent = `锁定力度为 ${force} N（未进入 1450~1599 N 黄金槽）。踏板完好，但制动力不足以支持急刹停稳。`;
+      }
+
+      resultModal.classList.remove('hidden');
+    }
+
+    function resetChallenge() {
+      if (simulationFrame) cancelAnimationFrame(simulationFrame);
+      resultModal.classList.add('hidden');
+
+      initialSpeed = 100;
+      currentSpeed = 100;
+      setGaugeSpeed(100);
+
+      isBraking = false;
+      pingPongRunning = true;
+      triggerBtn.disabled = false;
+      triggerBtn.classList.remove('opacity-50', 'pointer-events-none');
+
+      pedalCrackGroup.setAttribute('opacity', '0');
+      pedalLowerGroup.style.transform = 'none';
+      pedalContainer.style.transform = 'none';
+      pedalConditionText.textContent = '踏板待命中';
+      pedalConditionText.className = 'text-[10px] font-bold text-neutral-400 mt-1';
+      sparksBox.innerHTML = '';
+
+      brakeTimeVal.textContent = '0.00';
+      brakeDistVal.textContent = '0.0';
+      targetDeltaVal.textContent = '--';
+      brakeActionTag.textContent = 'READY TO BRAKE';
+      brakeActionTag.className = 'mt-1 px-2.5 py-0.5 rounded text-[10px] tracking-widest uppercase font-bold text-neutral-500 bg-neutral-900/80 border border-neutral-800';
+
+      statusBadge.className = 'inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 text-xs font-bold tracking-wide';
+      statusText.textContent = '绿灯 · 游标来回漂移中';
+    }
+
+    triggerBtn.addEventListener('click', lockAndBrake);
+    modalResetBtn.addEventListener('click', resetChallenge);
+
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (resultModal.classList.contains('hidden')) {
+          lockAndBrake();
+        } else {
+          resetChallenge();
+        }
+      }
+    });
+
+    infoBtn.addEventListener('click', () => infoModal.classList.remove('hidden'));
+    closeInfoBtn.addEventListener('click', () => infoModal.classList.add('hidden'));
+
+    soundBtn.addEventListener('click', () => {
+      audio.muted = !audio.muted;
+      soundBtn.classList.toggle('opacity-40', audio.muted);
+    });
+
+    window.addEventListener('load', () => {
+      setGaugeSpeed(100);
+    });
+  </script>
+</body>
+</html>
